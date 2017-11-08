@@ -38,6 +38,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f3xx_hal.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -111,6 +112,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_USART3_UART_Init();
   MX_SPI2_Init();
@@ -143,9 +145,10 @@ int main(void)
       HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &tempAddr, 1, timeOut);
       delay = 20;
       HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData + i, 1, timeOut);
-      HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+      // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
       tempAddr += 0x01;
     }
+    HAL_UART_Transmit(&huart1, i2cTempData, 12, timeOut);
     // HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, i2cTempData, 1, timeOut);
     // delay = 20;
     // while(delay--);
