@@ -84,7 +84,7 @@ int main(void)
   uint16_t devReadAddr = 0xA5;
   uint8_t enSiData[2] = {0x03,0x40};
   uint8_t i2cData[10] = {0x03,0x40,0x02,0x03,0x04};
-  uint8_t i2cTempData[10];
+  uint8_t i2cTempData[12];
 //  uint8_t *pData = i2cData;
   uint16_t size = 3;
   uint32_t timeOut = 100;
@@ -133,22 +133,32 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-  GPIOB->ODR = TP6_Pin;
-  GPIOB->ODR = 0x0000U;
-  i2cTempData[0]=0x20;
-  HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, i2cTempData, 1, timeOut);
-  delay = 20;
-  while(delay--);
-  delay = 2000;
-  HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData, 1, timeOut);
-  HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
+    int i=0;
+    uint8_t tempAddr = 0x00;
+    GPIOB->ODR = TP6_Pin;
+    GPIOB->ODR = 0x0000U;
+    tempAddr = 0x20;
+    for (i = 0; i < 12; i++)
+    {
+      HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &tempAddr, 1, timeOut);
+      delay = 20;
+      HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData + i, 1, timeOut);
+      HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+      tempAddr += 0x01;
+    }
+    // HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, i2cTempData, 1, timeOut);
+    // delay = 20;
+    // while(delay--);
+    // delay = 2000;
+    // HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData, 1, timeOut);
+    // HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
 //  HAL_I2C_Master_Receive(&hi2c1, (uint16_t)devAddr, i2cData, (uint16_t)size, (uint32_t)timeOut);
-  while(delay--);
-  delay = 2000;
+    while(delay--);
+    delay = 2000;
 //  HAL_I2C_Mem_Read(&hi2c1, 0x52, 0x00, 0x05, i2cData, size, timeOut);
-  HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, spiTxSize, spiTimeout);
-    
-  HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
+    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, spiTxSize, spiTimeout);
+      
+    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
   }
   /* USER CODE END 3 */
 
