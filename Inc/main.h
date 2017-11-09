@@ -46,11 +46,32 @@
 
 /* Private define ------------------------------------------------------------*/
 
+#define SPI1_CS_Pin GPIO_PIN_4
+#define SPI1_CS_GPIO_Port GPIOA
+#define START_LIDAR_Pin GPIO_PIN_0
+#define START_LIDAR_GPIO_Port GPIOB
+#define POWER_DET_Pin GPIO_PIN_1
+#define POWER_DET_GPIO_Port GPIOB
 #define TP6_Pin GPIO_PIN_2
 #define TP6_GPIO_Port GPIOB
+#define MOTOR_DIR_Pin GPIO_PIN_8
+#define MOTOR_DIR_GPIO_Port GPIOB
+#define USB_DET_Pin GPIO_PIN_9
+#define USB_DET_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define REG_20 0x68
+#define REG_21 0x28
+#define REG_22 0x3A
+#define REG_23 0x08
+#define REG_24 0x50
+#define REG_25 0xDA
+#define REG_26 0x8B
+#define REG_27 0x10
+#define REG_28 0x27
+#define REG_29 0x37
+#define REG_2A 0x04
+#define REG_2B 0x0C
 /* USER CODE END Private defines */
 
 void _Error_Handler(char *, int);

@@ -73,9 +73,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  uint8_t spiTxData[2] = {0xFF,0xFF};
-  uint8_t spiTxSize = 2;
-  uint8_t spiRxData[2];
+  uint8_t spiTxData[4] = {0xFF,0xFF,0xFF,0xFF};
+  uint8_t spiTxSize = 1;
+  uint8_t spiRxData[4];
   uint16_t spiTimeout = 100;
   
   
@@ -85,13 +85,49 @@ int main(void)
   uint16_t devReadAddr = 0xA5;
   uint8_t enSiData[2] = {0x03,0x40};
   uint8_t i2cData[10] = {0x03,0x40,0x02,0x03,0x04};
-  uint8_t i2cTempData[12];
+  uint8_t i2cTempData[20];
 //  uint8_t *pData = i2cData;
   uint16_t size = 3;
   uint32_t timeOut = 100;
   
   uint16_t delay = 200;
 
+  uint8_t regWDSet[24] = {
+    0x20, 0x68,
+    0x21, 0x28,
+    0x22, 0x3A,
+    0x23, 0x08,
+    0x24, 0x50,
+    0x25, 0xDA,
+    0x26, 0x8B,
+    0x27, 0x10,
+    0x28, 0x27,
+    0x29, 0x37,
+    0x2A, 0x04,
+    0x2B, 0x0C
+  };
+  
+  uint8_t regDftSet[24] = {
+    0x20, 0x4A,
+    0x21, 0x4E,
+    0x22, 0x2A,
+    0x23, 0x00,
+    0x24, 0x98,
+    0x25, 0xE4,
+    0x26, 0x7A,
+    0x27, 0xFC,
+    0x28, 0x69,
+    0x29, 0xB7,
+    0x2A, 0xAD,
+    0x2B, 0x0C
+  };  
+  
+  
+  uint8_t regSPDctrl[2] = {
+	0x01, 0x00
+  };
+
+  int i=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -124,8 +160,21 @@ int main(void)
   MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
+
   //enable Sidata bit 10983
   HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, enSiData, 2, timeOut);
+  
+	for (i = 0; i < 12; i++)
+	{
+	  HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &regDftSet[2*i], 2, timeOut);
+	  delay = 20;
+	  while(delay--){};
+	}
+	
+  /* set OverRide to 0, use PWM, forbid i2c SPD ctrl */
+  HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, regSPDctrl, 2, timeOut);
+	
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -135,20 +184,50 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-    int i=0;
     uint8_t tempAddr = 0x00;
     GPIOB->ODR = TP6_Pin;
     GPIOB->ODR = 0x0000U;
+
+	/* read regs of drv10983 addr 0x20 - 0x2B */
     tempAddr = 0x20;
     for (i = 0; i < 12; i++)
     {
       HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &tempAddr, 1, timeOut);
       delay = 20;
+      while(delay--){};
       HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData + i, 1, timeOut);
       // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
       tempAddr += 0x01;
     }
-    HAL_UART_Transmit(&huart1, i2cTempData, 12, timeOut);
+     HAL_UART_Transmit(&huart1, i2cTempData, 12, timeOut);
+
+	/* read regs of drv10983 addr 0x00 - 0x01 */
+//    tempAddr = 0x00;
+//    for (i = 0; i < 2; i++)
+//    {
+//      HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &tempAddr, 1, timeOut);
+//      delay = 20;
+//      while(delay--){};
+//      HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData + i, 1, timeOut);
+//      // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+//      tempAddr += 0x01;
+//    }
+//     HAL_UART_Transmit(&huart1, i2cTempData, 2, timeOut);
+
+	/* read regs of drv10983 addr 0x10 - 0x1E */
+//    tempAddr = 0x00;
+//    for (i = 0; i < 14; i++)
+//    {
+//      HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, &tempAddr, 1, timeOut);
+//      delay = 20;
+//      while(delay--){};
+//      HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData + i, 1, timeOut);
+//      // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+//      tempAddr += 0x01;
+//    }
+//     HAL_UART_Transmit(&huart1, i2cTempData, 14, timeOut);	
+	
+//    HAL_UART_Transmit_DMA(&huart1, i2cTempData, 12);
     // HAL_I2C_Master_Transmit(&hi2c1, devWriteAddr, i2cTempData, 1, timeOut);
     // delay = 20;
     // while(delay--);
@@ -156,12 +235,18 @@ int main(void)
     // HAL_I2C_Master_Receive(&hi2c1, devReadAddr, i2cTempData, 1, timeOut);
     // HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
 //  HAL_I2C_Master_Receive(&hi2c1, (uint16_t)devAddr, i2cData, (uint16_t)size, (uint32_t)timeOut);
-    while(delay--);
     delay = 2000;
-//  HAL_I2C_Mem_Read(&hi2c1, 0x52, 0x00, 0x05, i2cData, size, timeOut);
-    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, spiTxSize, spiTimeout);
-      
-    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
+  while(delay--){};
+
+//    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+//  delay = 20;
+//  while(delay--){};
+//    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, spiTxSize, spiTimeout);
+//  delay = 20;
+//  while(delay--){};
+//    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
+//      
+//    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
   }
   /* USER CODE END 3 */
 
