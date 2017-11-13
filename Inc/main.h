@@ -72,6 +72,9 @@
 #define REG_29 0x37
 #define REG_2A 0x04
 #define REG_2B 0x0C
+
+#define DEVWRITECMD 0xA4
+#define DEVREADCMD 0xA5
 /* USER CODE END Private defines */
 
 void _Error_Handler(char *, int);
