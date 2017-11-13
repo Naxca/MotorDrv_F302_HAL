@@ -54,6 +54,12 @@
 #define POWER_DET_GPIO_Port GPIOB
 #define TP6_Pin GPIO_PIN_2
 #define TP6_GPIO_Port GPIOB
+#define TP7_Pin GPIO_PIN_3
+#define TP7_GPIO_Port GPIOB
+#define TP8_Pin GPIO_PIN_4
+#define TP8_GPIO_Port GPIOB
+#define TP9_Pin GPIO_PIN_5
+#define TP9_GPIO_Port GPIOB
 #define MOTOR_DIR_Pin GPIO_PIN_8
 #define MOTOR_DIR_GPIO_Port GPIOB
 #define USB_DET_Pin GPIO_PIN_9

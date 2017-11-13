@@ -64,6 +64,8 @@ void SystemClock_Config(void);
 /* Private function prototypes -----------------------------------------------*/
 void simpleDelay(uint16_t delayCnt);
 uint8_t drv10983_Read(uint8_t regAddr);
+
+void HAL_SYSTICK_Callback(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -354,6 +356,11 @@ uint8_t drv10983_Read(uint8_t regAddr)
   simpleDelay(20);
   HAL_I2C_Master_Receive(&hi2c1, DEVREADCMD, &tempData, 1, 10);
   return tempData;
+}
+
+void HAL_SYSTICK_Callback(void)
+{
+  
 }
 /* USER CODE END 4 */
 
