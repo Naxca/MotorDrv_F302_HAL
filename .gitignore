@@ -1,3 +1,5 @@
+JLinkLog.txt
+/source_insight
 *.bin
 *.hex
 *.axf
