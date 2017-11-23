@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=D:/STM32Projects/MotorDrv_F302_HAL/Inc
+HeaderPath=G:/lidar/stm32/moto_drive/MotorDrv_F302_HAL/MotorDrv_F302_HAL/Inc
 HeaderFiles=gpio.h;i2c.h;spi.h;tim.h;usart.h;usb.h;stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;dma.h;
-SourcePath=D:/STM32Projects/MotorDrv_F302_HAL/Src
+SourcePath=G:/lidar/stm32/moto_drive/MotorDrv_F302_HAL/MotorDrv_F302_HAL/Src
 SourceFiles=gpio.h;i2c.h;spi.h;tim.h;usart.h;usb.h;stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;gpio.c;i2c.c;spi.c;tim.c;usart.c;usb.c;stm32f3xx_it.c;stm32f3xx_hal_msp.c;main.c;dma.h;dma.c;
 
 [PreviousLibFiles]
@@ -10,4 +10,7 @@ LibFiles=Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_i2c.h;Drivers/STM32F3xx_
 [PreviousUsedKeilFiles]
 SourceFiles=../Src/main.c;../Src/gpio.c;../Src/dma.c;../Src/i2c.c;../Src/spi.c;../Src/tim.c;../Src/usart.c;../Src/usb.c;../Src/stm32f3xx_it.c;../Src/stm32f3xx_hal_msp.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_i2c.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_i2c_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_spi_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_tim.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_tim_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_pcd.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_pcd_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_rcc.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_rcc_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_gpio.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_pwr.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_pwr_ex.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_flash.c;../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_flash_ex.c;../Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/system_stm32f3xx.c;../Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/arm/startup_stm32f302xc.s;
 HeaderPath=..\Drivers\STM32F3xx_HAL_Driver\Inc;..\Drivers\STM32F3xx_HAL_Driver\Inc\Legacy;..\Drivers\CMSIS\Device\ST\STM32F3xx\Include;..\Drivers\CMSIS\Include;
+
+[]
+SourceFiles=;null;
 
