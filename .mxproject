@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=G:/lidar/stm32/moto_drive/MotorDrv_F302_HAL/MotorDrv_F302_HAL/Inc
+HeaderPath=D:/STM32Projects/MotorDrv_F302_HAL/Inc
 HeaderFiles=gpio.h;i2c.h;spi.h;tim.h;usart.h;usb.h;stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;dma.h;
-SourcePath=G:/lidar/stm32/moto_drive/MotorDrv_F302_HAL/MotorDrv_F302_HAL/Src
+SourcePath=D:/STM32Projects/MotorDrv_F302_HAL/Src
 SourceFiles=gpio.h;i2c.h;spi.h;tim.h;usart.h;usb.h;stm32f3xx_it.h;stm32f3xx_hal_conf.h;main.h;gpio.c;i2c.c;spi.c;tim.c;usart.c;usb.c;stm32f3xx_it.c;stm32f3xx_hal_msp.c;main.c;dma.h;dma.c;
 
 [PreviousLibFiles]

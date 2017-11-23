@@ -82,6 +82,8 @@ int main(void)
 	uint8_t spiOutData[10];
   uint16_t spiTimeout = 10;
 	uint16_t angle;
+  uint16_t preAngle=0;
+  uint16_t deltaAngle=0;
   
   uint16_t devWriteCmd = 0xA4;
   uint16_t devReadCmd = 0xA5;
@@ -146,7 +148,7 @@ int main(void)
     0x29, 0x17,
     0x2A, 0x4,
     0x2B, 0xc,
-	0x00, 0x66,
+	0x00, 0x80,
 	0x01, 0x80				
   };
 
@@ -323,19 +325,22 @@ int main(void)
     // HAL_I2C_Master_Receive(&hi2c1, devReadCmd, i2cTempData, 1, timeOut);
     // HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
 //  HAL_I2C_Master_Receive(&hi2c1, (uint16_t)devAddr, i2cData, (uint16_t)size, (uint32_t)timeOut);
-    delay = 2000;
+    delay = 10000;
     while(delay--){};
 
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
     delay = 20;
     while(delay--){};
-    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, spiTxSize, spiTimeout);
+    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, 2, spiTimeout);
     delay = 20;
     while(delay--){};
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
 //    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
-		spiRxData[0] = spiRxData[0] & ~~0xC0;
+		spiRxData[0] = spiRxData[0] & ~0xC0;
 		angle = spiRxData[0]*256 + spiRxData[1];
+		deltaAngle = ( angle >= preAngle ) ? ( angle - preAngle ) : ( angle + 16384 -preAngle );
+		preAngle = angle;
+		
 		spiOutData[0] = (angle/10000)%10+0x30;	
 		spiOutData[1] = (angle/1000)%10+0x30;
 		spiOutData[2] = (angle/100)%10+0x30;
@@ -343,6 +348,14 @@ int main(void)
 		spiOutData[4] = angle%10 +0x30;
 		spiOutData[5] = 0x0d;
 		spiOutData[6] = 0x0a;
+		
+//		spiOutData[0] = (deltaAngle/10000)%10+0x30;	
+//		spiOutData[1] = (deltaAngle/1000)%10+0x30;
+//		spiOutData[2] = (deltaAngle/100)%10+0x30;
+//		spiOutData[3] = (deltaAngle/10)%10+0x30;
+//		spiOutData[4] = deltaAngle%10 +0x30;
+//		spiOutData[5] = 0x0d;
+//		spiOutData[6] = 0x0a;
 		
     HAL_UART_Transmit(&huart1, spiOutData, 7, timeOut);
 
