@@ -54,6 +54,14 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+uint8_t as5048spiTxData[2] = {0xFF,0xFF};
+uint8_t as5048spiTxSize = 2;
+uint8_t as5048spiRxData[2] = {0x00,0x00};
+uint8_t as5048spiOutData[20];
+uint16_t as5048angle;
+uint16_t as5048preAngle;
+uint16_t as5048avgAngle[5];
+uint8_t as5048avgCnt = 5;
 
 /* USER CODE END PV */
 
@@ -205,14 +213,13 @@ int main(void)
   MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim2);
 //  HAL_SuspendTick();
   /* test pulse */
-  GPIOB->ODR = TP6_Pin;
+  GPIOB->BRR = TP6_Pin;
   __nop();
   __nop();
-  GPIOB->ODR = 0x0000U;
-  GPIOB->ODR = TP6_Pin;
-  GPIOB->ODR = 0x0000U;
+  GPIOB->BSRR = TP6_Pin;
 
   //enable Sidata bit 10983
   HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, enSiData, 2, timeOut);
@@ -220,8 +227,6 @@ int main(void)
 	for (i = 0; i < 14; i++)
 	{
 	  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &regWDSet[2*i], 2, timeOut);
-	  delay = 20;
-	  while(delay--){};
 	}
 	
   /* set OverRide to 0, use PWM, forbid i2c SPD ctrl */
@@ -234,14 +239,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-  /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-  /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
     uint8_t tempAddr = 0x00;
-    GPIOB->ODR = TP6_Pin;
-    GPIOB->ODR = 0x0000U;
-
-	/* read regs of drv10983 addr 0x20 - 0x2B */
+    GPIOB->BRR = TP6_Pin;
+    __nop();
+    __nop();
+    GPIOB->BSRR = TP6_Pin;
+	  /* read regs of drv10983 addr 0x20 - 0x2B */
 	//USART1->TDR = 0xFF;
 		
 		/*
@@ -328,26 +334,26 @@ int main(void)
     delay = 10000;
     while(delay--){};
 
-    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
-    delay = 20;
-    while(delay--){};
-    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, 2, spiTimeout);
-    delay = 20;
-    while(delay--){};
-    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
-//    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
-		spiRxData[0] = spiRxData[0] & ~0xC0;
-		angle = spiRxData[0]*256 + spiRxData[1];
-		deltaAngle = ( angle >= preAngle ) ? ( angle - preAngle ) : ( angle + 16384 -preAngle );
-		preAngle = angle;
-		
-		spiOutData[0] = (angle/10000)%10+0x30;	
-		spiOutData[1] = (angle/1000)%10+0x30;
-		spiOutData[2] = (angle/100)%10+0x30;
-		spiOutData[3] = (angle/10)%10+0x30;
-		spiOutData[4] = angle%10 +0x30;
-		spiOutData[5] = 0x0d;
-		spiOutData[6] = 0x0a;
+//    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+//    delay = 20;
+//    while(delay--){};
+//    HAL_SPI_TransmitReceive(&hspi1, spiTxData, spiRxData, 2, spiTimeout);
+//    delay = 20;
+//    while(delay--){};
+//    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
+////    HAL_UART_Transmit(&huart1, spiRxData, spiTxSize, timeOut);
+//		spiRxData[0] = spiRxData[0] & ~0xC0;
+//		angle = spiRxData[0]*256 + spiRxData[1];
+//		deltaAngle = ( angle >= preAngle ) ? ( angle - preAngle ) : ( angle + 16384 -preAngle );
+//		preAngle = angle;
+//		
+//		spiOutData[0] = (angle/10000)%10+0x30;	
+//		spiOutData[1] = (angle/1000)%10+0x30;
+//		spiOutData[2] = (angle/100)%10+0x30;
+//		spiOutData[3] = (angle/10)%10+0x30;
+//		spiOutData[4] = angle%10 +0x30;
+//		spiOutData[5] = 0x0d;
+//		spiOutData[6] = 0x0a;
 		
 //		spiOutData[0] = (deltaAngle/10000)%10+0x30;	
 //		spiOutData[1] = (deltaAngle/1000)%10+0x30;
@@ -357,7 +363,7 @@ int main(void)
 //		spiOutData[5] = 0x0d;
 //		spiOutData[6] = 0x0a;
 		
-    HAL_UART_Transmit(&huart1, spiOutData, 7, timeOut);
+//    HAL_UART_Transmit(&huart1, spiOutData, 7, timeOut);
 
   }
   /* USER CODE END 3 */
@@ -450,6 +456,74 @@ void HAL_SYSTICK_Callback(void)
 {
   
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)  
+{
+//  uint16_t as5048angle;
+//  uint16_t as5048preAngle;
+  uint16_t deltaAngle;
+  if( htim == &htim2 )
+  {
+    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+    simpleDelay(20);
+    HAL_SPI_TransmitReceive(&hspi1, as5048spiTxData, as5048spiRxData, 2, 1);
+    simpleDelay(20);
+    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
+	as5048spiRxData[0] = as5048spiRxData[0] & 0x3F;
+	as5048angle = as5048spiRxData[0]*256 + as5048spiRxData[1];
+	deltaAngle = ( as5048angle >= as5048preAngle ) ? ( as5048angle - as5048preAngle ) : ( as5048angle + 16384 - as5048preAngle );
+//	as5048angle = (uint16_t) (as5048angle/16384.0*36000.0);
+	as5048preAngle = as5048angle;
+//    deltaAngle = (uint16_t) (deltaAngle/16384.0*10000.0);
+	
+//	if(as5048avgCnt==4)
+//	{
+//	  as5048avgCnt = 0;
+//	  as5048angle = ( as5048avgAngle[0] + as5048avgAngle[1] + as5048avgAngle[2] + as5048avgAngle[3] + as5048angle ) / 5;
+//    /* Absolute angle output */
+//	as5048spiOutData[0] = (as5048angle/10000)%10+0x30;	
+//	as5048spiOutData[1] = (as5048angle/1000)%10+0x30;
+//	as5048spiOutData[2] = (as5048angle/100)%10+0x30;
+//	as5048spiOutData[3] = (as5048angle/10)%10+0x30;
+//	as5048spiOutData[4] = as5048angle%10 +0x30;
+//	as5048spiOutData[5] = 0x0d;
+//	as5048spiOutData[6] = 0x0a;
+////    HAL_UART_Transmit(&huart1, as5048spiOutData, 7, 2);
+//	HAL_UART_Transmit_DMA(&huart1, as5048spiOutData, 7);
+//	}
+//	else
+//	{
+//	  as5048avgAngle[as5048avgCnt] = as5048angle;
+//	  as5048avgCnt++;
+//	}
+
+
+    /* Absolute angle output */
+//	as5048spiOutData[0] = (as5048angle/10000)%10+0x30;	
+//	as5048spiOutData[1] = (as5048angle/1000)%10+0x30;
+//	as5048spiOutData[2] = (as5048angle/100)%10+0x30;
+//	as5048spiOutData[3] = (as5048angle/10)%10+0x30;
+//	as5048spiOutData[4] = as5048angle%10 +0x30;
+//	as5048spiOutData[5] = 0x0d;
+//	as5048spiOutData[6] = 0x0a;
+////    HAL_UART_Transmit(&huart1, as5048spiOutData, 7, 2);
+//	HAL_UART_Transmit_DMA(&huart1, as5048spiOutData, 7);
+	  
+    /* Rotational speed out put */
+	as5048spiOutData[0] = (deltaAngle/10000)%10+0x30;	
+	as5048spiOutData[1] = (deltaAngle/1000)%10+0x30;
+	as5048spiOutData[2] = (deltaAngle/100)%10+0x30;
+	as5048spiOutData[3] = (deltaAngle/10)%10+0x30;
+	as5048spiOutData[4] = deltaAngle%10+0x30;
+	as5048spiOutData[5] = 0x0d;
+	as5048spiOutData[6] = 0x0a;
+//    HAL_UART_Transmit(&huart1, as5048spiOutData, 7, 2);
+    HAL_UART_Transmit_DMA(&huart1, as5048spiOutData, 7);
+  }
+//  HAL_GPIO_WritePin(TP1_GPIO_Port, TP1_Pin, GPIO_PIN_SET);
+//  HAL_GPIO_WritePin(TP1_GPIO_Port, TP1_Pin, GPIO_PIN_RESET);
+}  
+
 /* USER CODE END 4 */
 
 /**
