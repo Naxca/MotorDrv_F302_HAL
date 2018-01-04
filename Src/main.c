@@ -9,7 +9,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * COPYRIGHT(c) 2018 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -63,6 +63,17 @@ uint16_t as5048preAngle;
 uint16_t as5048avgAngle[5];
 uint8_t as5048avgCnt = 5;
 
+uint8_t ctrlReg[8] = {
+  0x00, 0x00,
+  0x01, 0x00,
+  0x02, 0x00,
+  0x03, 0x00
+};
+
+uint8_t speedCtrl1[2] = {0x00,0xFF};
+uint8_t speedCtrl2[2] = {0x01,0x80};
+uint8_t devCtrl[2] = {0x02,0xB6};
+uint8_t eeCtrl[2] = {0x03,0x50};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,7 +88,12 @@ void HAL_SYSTICK_Callback(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
+int fputc(int ch, FILE *f)
+{      
+	uint8_t temp = ch;
+  HAL_UART_Transmit(&huart1, &temp, 1, 0xFFFF);
+	return ch;
+}
 /* USER CODE END 0 */
 
 int main(void)
@@ -98,13 +114,12 @@ int main(void)
   uint8_t enSiData[2] = {0x03,0x40};
   uint8_t i2cData[10] = {0x03,0x40,0x02,0x03,0x04};
   uint8_t i2cTempData[20];
- 
   uint8_t eeprom_program_key[2] = {0x02,0xB6};
 	uint8_t eeprom_eeWrite[2] = {0x03,0x50};
 	
   uint16_t size = 3;
-  uint32_t timeOut = 10;
-  uint16_t delay = 200;
+  uint32_t timeOut = 0xFFFF;
+  uint32_t delay = 200;
   uint16_t speed;
 	/*
   uint8_t regWDSet[28] = {
@@ -123,30 +138,15 @@ int main(void)
 	0x00, 0x10,
 	0x01, 0x00				//0x80
   };*/
-	
 
-//	  uint8_t regWDSet[28] = {
+
+  uint8_t regWDSet[28] = {
 //    0x20, 0x5A,  //1101001: 5.57ohm
-//		0x21, 0x5C,  //0101000: 28mv/hz
-//    0x22, 0x2A,  //Tdelay
-//    0x23, 0x00,  //
-//    0x24, 0xd2,
-//    0x25, 0xfd,
-//    0x26, 0xbf,
-//    0x27, 0xFC,
-//    0x28, 0x69,
-//    0x29, 0xbf,
-//    0x2A, 0x4,
-//    0x2B, 0xf,
-//	0x00, 0xff,
-//	0x01, 0x81				
-//  };
-
-
-	  uint8_t regWDSet[28] = {
-    0x20, 0x5A,  //1101001: 5.57ohm
-		0x21, 0x5c,  //0101000: 28mv/hz
-    0x22, 0x4,  //Tdelay
+    0x20, 0x6F,  //9.5 ohm for MY-3514C
+//    0x21, 0x5c,  //0101000: 28mv/hz
+    0x21, 0x5E,  //145RPM/V ?mV/Hz for MY-3514C
+//    0x22, 0x4,  //Tdelay
+    0x22, 0x04,  //test for MY-3514
     0x23, 0x00,  //
     0x24, 0xc2,
     0x25, 0xff,
@@ -156,8 +156,8 @@ int main(void)
     0x29, 0x17,
     0x2A, 0x4,
     0x2B, 0xc,
-	0x00, 0x80,
-	0x01, 0x80				
+    0x00, 0xFF,
+    0x01, 0x80
   };
 
   uint8_t regDftSet[24] = {
@@ -174,13 +174,9 @@ int main(void)
     0x2A, 0xAD,
     0x2B, 0x0C
   };  
-  
-  
-  uint8_t regSPDctrl[2] = {
-	0x01, 0x00
-  };
 
   int i=0;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -213,7 +209,8 @@ int main(void)
   MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim2);
+//  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 //  HAL_SuspendTick();
   /* test pulse */
   GPIOB->BRR = TP6_Pin;
@@ -233,15 +230,20 @@ int main(void)
 //  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, regSPDctrl, 2, timeOut);
 	
  // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+//  delay = 0x0FFFFFFF;
+//  while(delay--){};
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+  /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
+    
+    printf("Test1234567789\n");
+
     uint8_t tempAddr = 0x00;
     GPIOB->BRR = TP6_Pin;
     __nop();
@@ -331,7 +333,7 @@ int main(void)
     // HAL_I2C_Master_Receive(&hi2c1, devReadCmd, i2cTempData, 1, timeOut);
     // HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
 //  HAL_I2C_Master_Receive(&hi2c1, (uint16_t)devAddr, i2cData, (uint16_t)size, (uint32_t)timeOut);
-    delay = 10000;
+    delay = 0x04FFFFFF;
     while(delay--){};
 
 //    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
