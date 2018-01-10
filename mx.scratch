@@ -11,16 +11,6 @@
 <filestoremove>
 	<file>
 	   		<name>..\Drivers\CMSIS\Device\ST\STM32F3xx\Source\Templates\arm\startup_stm32f302xc.s</name>
-	   		<name>..\Src\main.c</name>
-	   		<name>..\Src\gpio.c</name>
-	   		<name>..\Src\dma.c</name>
-	   		<name>..\Src\i2c.c</name>
-	   		<name>..\Src\spi.c</name>
-	   		<name>..\Src\tim.c</name>
-	   		<name>..\Src\usart.c</name>
-	   		<name>..\Src\usb.c</name>
-	   		<name>..\Src\stm32f3xx_it.c</name>
-	   		<name>..\Src\stm32f3xx_hal_msp.c</name>
 	</file>
 </filestoremove>
 

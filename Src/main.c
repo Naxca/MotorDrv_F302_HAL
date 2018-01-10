@@ -52,7 +52,7 @@
 #include <string.h>
 
 #define ARG_NUM 10
-#define CMD_FUNC_CNT 4
+#define CMD_FUNC_CNT 6
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -121,6 +121,9 @@ void printf_hello(int argc, int *cmd_arg);
 void handle_arg(int argc, int *cmd_arg);
 void toggle_led(int argc, int *cmd_arg);
 void read_reg_10983(int argc, int *cmd_arg);
+void set_speed(int argc, int *cmd_arg);
+void set_reg(int argc, int *cmd_arg);
+void set_pwm(int pulseWidth);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -136,7 +139,9 @@ const cmd_list_struct cmd_list[]={
 {"hello",   0,      printf_hello,   "hello                     -HelloWorld!"},
 {"arg",     8,      handle_arg,     "arg<arg1> <arg2> ...      -Test, Print args"},
 {"toggleled", 0, toggle_led, "no help" },
-{"readreg", 0, read_reg_10983, "Read Drv10983 Regs"}
+{"readreg", 0, read_reg_10983, "Read Drv10983 Regs"},
+{"setspeed", 1, set_speed, "Set Motor speed"},
+{"setreg", 2, set_reg, "Set DRV10983 Register"}
 };
 /* USER CODE END 0 */
 
@@ -199,8 +204,8 @@ int main(void)
     0x29, 0x17,
     0x2A, 0x4,
     0x2B, 0xc,
-    0x00, 0x7F,
-    0x01, 0x00
+    0x00, 0x8F,
+    0x01, 0x80
   };
 
   uint8_t regDftSet[24] = {
@@ -672,6 +677,42 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //  HAL_GPIO_WritePin(TP1_GPIO_Port, TP1_Pin, GPIO_PIN_RESET);
 }  
 
+void set_pwm(int pulseWidth)
+{
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 7200;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = pulseWidth;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   HAL_UART_Receive_IT(&huart1, rxBuf, 1);
@@ -699,6 +740,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       case 0x08:  //backspace
         if(rxCmdCnt>=1)
         {
+          rxCmdBuf[rxCmdCnt] = 0;
           rxCmdCnt--;
         }
         sflag = 0;
@@ -822,7 +864,7 @@ void read_reg_10983(int argc, int *cmd_arg)
   printf("Drv10983 Reg:\r\n");
   int i;
   int delay;
-  uint8_t i2cTempData[12];
+  uint8_t i2cTempData[24];
   uint8_t tempAddr = 0x00;
   /* read regs of drv10983 addr 0x20 - 0x2B */
 		
@@ -840,8 +882,61 @@ void read_reg_10983(int argc, int *cmd_arg)
   }
   for(i = 0; i < 12; i++)
   {
+    printf("Reg 0x%02X:  0x%02X\r\n", i+0x20, i2cTempData[i]);
+  }
+  
+  tempAddr = 0x00;
+  for (i = 0; i < 4; i++)
+  {
+    HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &tempAddr, 1, 0xFFFF);
+    delay = 20;
+    while(delay--){};
+    HAL_I2C_Master_Receive(&hi2c1, devReadCmd, &i2cTempData[i], 1, 0xFFFF);
+    // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+    tempAddr += 0x01;
+      
+    simpleDelay(200);
+  }
+  for(i = 0; i < 4; i++)
+  {
     printf("Reg 0x%02X:  0x%02X\r\n", i, i2cTempData[i]);
   }
+  
+  tempAddr = 0x10;
+  for (i = 0; i < 15; i++)
+  {
+    HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &tempAddr, 1, 0xFFFF);
+    delay = 20;
+    while(delay--){};
+    HAL_I2C_Master_Receive(&hi2c1, devReadCmd, &i2cTempData[i], 1, 0xFFFF);
+    // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+    tempAddr += 0x01;
+      
+    simpleDelay(200);
+  }
+  for(i = 0; i < 15; i++)
+  {
+    printf("Reg 0x%02X:  0x%02X\r\n", i+0x10, i2cTempData[i]);
+  }
+}
+
+void set_speed(int argc, int *cmd_arg)
+{
+  printf("Speed: %d\r\n", cmd_arg[0]);  // DEC
+//  printf("Speed: %04X\r\n", cmd_arg[0]);  // HEX
+  HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
+  set_pwm(cmd_arg[0]);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+}
+
+void set_reg(int argc, int *cmd_arg)
+{
+  printf("Write Address 0x%02X with Data 0x%02X\r\n", cmd_arg[0], cmd_arg[1]);
+  uint8_t addr_reg[2];
+  addr_reg[0] = cmd_arg[0];
+  addr_reg[1] = cmd_arg[1];
+  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, addr_reg, 2, 0xFFFF);
+  printf("OK!\r\n");
 }
 /* USER CODE END 4 */
 
