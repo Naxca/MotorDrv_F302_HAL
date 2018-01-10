@@ -35,6 +35,7 @@
   *
   ******************************************************************************
   */
+
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f3xx_hal.h"
@@ -47,7 +48,11 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include <ctype.h>
+#include <string.h>
 
+#define ARG_NUM 10
+#define CMD_FUNC_CNT 4
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -74,10 +79,33 @@ uint8_t speedCtrl1[2] = {0x00,0xFF};
 uint8_t speedCtrl2[2] = {0x01,0x80};
 uint8_t devCtrl[2] = {0x02,0xB6};
 uint8_t eeCtrl[2] = {0x03,0x50};
+
+uint16_t devWriteCmd = 0xA4;
+uint16_t devReadCmd = 0xA5;
+
+uint8_t rxBuf[4];
+uint8_t rxCmdBuf[21];
+uint8_t testCmd[] = {'1','2','3'};
+volatile uint8_t rxCmdCnt=0;
+volatile uint8_t rxCmdLen=0;
+volatile uint8_t sflag=0;
+
+char cmd_cmd[21];
+int cmd_arg[ARG_NUM];
+
+typedef struct {
+  char const *cmd_name;
+  int32_t max_args;
+  void (*handle)(int argc,int *cmd_arg);
+//  void (*handle)(int argc,void *cmd_arg);
+//  void (*handle)(void);
+  char  *help;
+}cmd_list_struct;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_NVIC_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -85,6 +113,14 @@ void simpleDelay(uint16_t delayCnt);
 uint8_t drv10983_Read(uint8_t regAddr);
 
 void HAL_SYSTICK_Callback(void);
+
+static int32_t cmd_arg_analyze(uint8_t *rec_buf,unsigned int len);
+static int32_t string_to_dec(uint8_t *buf,uint32_t len);
+
+void printf_hello(int argc, int *cmd_arg);
+void handle_arg(int argc, int *cmd_arg);
+void toggle_led(int argc, int *cmd_arg);
+void read_reg_10983(int argc, int *cmd_arg);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -94,6 +130,14 @@ int fputc(int ch, FILE *f)
   HAL_UART_Transmit(&huart1, &temp, 1, 0xFFFF);
 	return ch;
 }
+
+const cmd_list_struct cmd_list[]={  
+/* CMD    ARGnum    processfunc       help                         */
+{"hello",   0,      printf_hello,   "hello                     -HelloWorld!"},
+{"arg",     8,      handle_arg,     "arg<arg1> <arg2> ...      -Test, Print args"},
+{"toggleled", 0, toggle_led, "no help" },
+{"readreg", 0, read_reg_10983, "Read Drv10983 Regs"}
+};
 /* USER CODE END 0 */
 
 int main(void)
@@ -109,8 +153,7 @@ int main(void)
   uint16_t preAngle=0;
   uint16_t deltaAngle=0;
   
-  uint16_t devWriteCmd = 0xA4;
-  uint16_t devReadCmd = 0xA5;
+
   uint8_t enSiData[2] = {0x03,0x40};
   uint8_t i2cData[10] = {0x03,0x40,0x02,0x03,0x04};
   uint8_t i2cTempData[20];
@@ -208,6 +251,9 @@ int main(void)
   MX_TIM1_Init();
   MX_USART2_UART_Init();
 
+  /* Initialize interrupts */
+  MX_NVIC_Init();
+
   /* USER CODE BEGIN 2 */
 //  HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
@@ -226,12 +272,20 @@ int main(void)
 	  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &regWDSet[2*i], 2, timeOut);
 	}
 	
+  
+  
   /* set OverRide to 0, use PWM, forbid i2c SPD ctrl */
 //  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, regSPDctrl, 2, timeOut);
 	
  // HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 //  delay = 0x0FFFFFFF;
 //  while(delay--){};
+  
+//  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, eeprom_program_key, 2, timeOut);
+//  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, eeprom_eeWrite, 2, timeOut);
+  
+  HAL_UART_Receive_IT(&huart1, rxBuf, 1);
+  printf("Start:\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -241,14 +295,97 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+    int j=0;
+    int argNum;
     
-    printf("Test1234567789\n");
+    HAL_Delay(4);
+//    HAL_UART_Transmit(&huart2, txBuf, 4, 0xFFFF);
+    switch(sflag)
+    {
+      case 0:
+        break;
+      case 1:
+        sflag = 0;
+        HAL_UART_Transmit(&huart1, rxCmdBuf+rxCmdCnt-1, 1, 0xFFFF);
+        break;
+      case 2: //Command received!
+        sflag = 0;
+        printf("\r\nYour Command is:\r\n");
+        HAL_UART_Transmit(&huart1, rxCmdBuf, rxCmdLen, 0xFFFF); // send back command without last '\r'
+        printf("\r\n");
+        /* Call parser function */
+//        if(parser(rxCmdBuf,rxCmdLen))
+//        {
+//          printf("\r\nOK!");
+//        }
+//        printf("\r\n");
+//        if( 123 == string_to_dec(rxCmdBuf,rxCmdLen) )
+//        {
+//          printf("Match!\r\n");
+//        }
+        argNum = cmd_arg_analyze(rxCmdBuf, rxCmdLen);
+        for( j=0; j<21; j++)
+        {
+          cmd_cmd[j]='\0';
+        }
+        if(!isdigit(rxCmdBuf[0]))
+        {
+          for(j=0; j<rxCmdLen; j++)
+          {
+            if( (j>0) && (rxCmdBuf[j]==' ' || rxCmdBuf[j]==0x0D) )
+            {
+              cmd_cmd[j]='\0';
+              break;
+            }
+            else
+            {
+              cmd_cmd[j]=rxCmdBuf[j];
+            }
+          }
+          printf("Command:");
+          printf("%s\r\n",cmd_cmd);
+        }
 
-    uint8_t tempAddr = 0x00;
-    GPIOB->BRR = TP6_Pin;
-    __nop();
-    __nop();
-    GPIOB->BSRR = TP6_Pin;
+        printf("ArgNum: %d\r\n", argNum);
+        for(j=0; j<argNum; j++)
+        {
+          printf("Arg%d: %d\r\n", j+1, cmd_arg[j]);
+        }
+        for( j=0; j<CMD_FUNC_CNT; j++)
+        {
+          printf("Trying to match Command %d\r\n", j+1);
+          if(!strcmp((char *)cmd_cmd, cmd_list[j].cmd_name))
+          {
+            if( argNum<0 || argNum>cmd_list[j].max_args)
+            {
+              printf("Too much args!\r\n");
+            }
+            else
+            {
+              cmd_list[j].handle(argNum, cmd_arg);
+            }
+            break;
+          }
+        }
+        break;
+      case 3:
+        sflag=0;
+        printf("\r\nStack OverFlow!!!\r\n");
+        break;
+      case 4:
+        sflag=0;
+        printf("\r\nCtrl + c!\r\n");
+        break;
+    }
+  }
+  
+//    printf("Test1234567789\n");
+
+//    uint8_t tempAddr = 0x00;
+//    GPIOB->BRR = TP6_Pin;
+//    __nop();
+//    __nop();
+//    GPIOB->BSRR = TP6_Pin;
 	  /* read regs of drv10983 addr 0x20 - 0x2B */
 	//USART1->TDR = 0xFF;
 		
@@ -266,26 +403,26 @@ int main(void)
 	  simpleDelay(200);
     }*/
 		
-		tempAddr = 0x11;
-    for (i = 0; i < 2; i++)
-    {
-      HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &tempAddr, 1, timeOut);
-      delay = 20;
-      while(delay--){};
-      HAL_I2C_Master_Receive(&hi2c1, devReadCmd, i2cTempData + i, 1, timeOut);
-      // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
-      tempAddr += 0x01;
-	 // USART1->TDR = i2cTempData[i];
-	  simpleDelay(200);
-    }
-		
-		speed = i2cTempData[0]*256 + i2cTempData[1];
-		i2cTempData[0] = (speed/1000)%10+0x30;	
-		i2cTempData[1] = (speed/100)%10+0x30;
-		i2cTempData[2] = (speed/10)%10+0x30;
-		i2cTempData[3] = speed%10 +0x30;		
-		i2cTempData[4] = 0x0d;
-		i2cTempData[5] = 0x0a;
+//		tempAddr = 0x11;
+//    for (i = 0; i < 2; i++)
+//    {
+//      HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &tempAddr, 1, timeOut);
+//      delay = 20;
+//      while(delay--){};
+//      HAL_I2C_Master_Receive(&hi2c1, devReadCmd, i2cTempData + i, 1, timeOut);
+//      // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+//      tempAddr += 0x01;
+//	 // USART1->TDR = i2cTempData[i];
+//	  simpleDelay(200);
+//    }
+//		
+//		speed = i2cTempData[0]*256 + i2cTempData[1];
+//		i2cTempData[0] = (speed/1000)%10+0x30;	
+//		i2cTempData[1] = (speed/100)%10+0x30;
+//		i2cTempData[2] = (speed/10)%10+0x30;
+//		i2cTempData[3] = speed%10 +0x30;		
+//		i2cTempData[4] = 0x0d;
+//		i2cTempData[5] = 0x0a;
 	//	 HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, eeprom_program_key, 2, timeOut);
 	//	 HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, eeprom_eeWrite, 2, timeOut);
 		
@@ -333,8 +470,8 @@ int main(void)
     // HAL_I2C_Master_Receive(&hi2c1, devReadCmd, i2cTempData, 1, timeOut);
     // HAL_UART_Transmit(&huart1, i2cTempData, 1, timeOut);
 //  HAL_I2C_Master_Receive(&hi2c1, (uint16_t)devAddr, i2cData, (uint16_t)size, (uint32_t)timeOut);
-    delay = 0x04FFFFFF;
-    while(delay--){};
+//    delay = 0x04FFFFFF;
+//    while(delay--){};
 
 //    HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
 //    delay = 20;
@@ -367,7 +504,7 @@ int main(void)
 		
 //    HAL_UART_Transmit(&huart1, spiOutData, 7, timeOut);
 
-  }
+//  }
   /* USER CODE END 3 */
 
 }
@@ -434,6 +571,15 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+/** NVIC Configuration
+*/
+static void MX_NVIC_Init(void)
+{
+  /* USART1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(USART1_IRQn);
 }
 
 /* USER CODE BEGIN 4 */
@@ -526,6 +672,177 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //  HAL_GPIO_WritePin(TP1_GPIO_Port, TP1_Pin, GPIO_PIN_RESET);
 }  
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  HAL_UART_Receive_IT(&huart1, rxBuf, 1);
+  rxCmdBuf[rxCmdCnt] = rxBuf[0];
+  rxCmdCnt++;
+  if( 20 == rxCmdCnt )
+  {
+    rxCmdCnt = 0;
+    sflag = 3;
+  }
+
+  else
+  {
+    switch(rxCmdBuf[rxCmdCnt-1])
+    {
+      case 0x0D:  //enter
+        rxCmdLen = rxCmdCnt - 1;
+        rxCmdCnt = 0;
+        sflag = 2;
+        break;
+      case 0x03:  //ctrl+c
+        rxCmdCnt = 0;
+        sflag = 4;
+        break;
+      case 0x08:  //backspace
+        if(rxCmdCnt>=1)
+        {
+          rxCmdCnt--;
+        }
+        sflag = 0;
+        break;
+      default:
+        sflag = 1;
+        break;
+    }
+  }
+}
+
+static int32_t cmd_arg_analyze(uint8_t *rec_buf,unsigned int len)
+{
+  uint32_t i;
+  uint32_t blank_space_flag=0;
+  uint32_t arg_num=0;
+  uint32_t index[ARG_NUM];
+
+  for(i=0;i<len;i++)
+  {
+    if(rec_buf[i]==0x20)
+    {
+      blank_space_flag=1;
+      continue;
+    }
+    else if(rec_buf[i]==0x0D)
+    {
+      break;
+    }
+    else
+    {
+      if(blank_space_flag==1)
+      {
+        blank_space_flag=0;
+        if(arg_num < ARG_NUM)
+        {
+          index[arg_num]=i;
+          arg_num++;
+        }
+        else
+        {
+          return -1;
+        }
+      }
+    }
+  }
+
+    for(i=0;i<arg_num;i++)
+    {
+        cmd_arg[i]=string_to_dec((unsigned char *)(rec_buf+index[i]),len-index[i]);
+    }
+    return arg_num;
+}
+
+static int32_t string_to_dec(uint8_t *buf,uint32_t len)
+{
+  uint32_t i=0;
+  uint32_t base=10;
+  int32_t neg=1;
+  int32_t result=0;
+
+  if((buf[0]=='0')&&(buf[1]=='x'))
+  {
+    base=16;
+    neg=1;
+    i=2;
+  }
+  else if(buf[0]=='-')
+  {
+    base=10;
+    neg=-1;
+    i=1;
+  }
+  for(;i<len;i++)
+  {
+    if(buf[i]==0x20 || buf[i]==0x0D)
+    {
+      break;
+    }
+
+    result *= base;
+    if(isdigit(buf[i]))
+    {
+      result += buf[i]-'0';
+    }
+    else if(isxdigit(buf[i]))
+    {
+      result+=tolower(buf[i])-87;
+    }
+    else
+    {
+      result += buf[i]-'0';
+    }
+  }
+  result *= neg;
+
+  return result;
+}
+
+void printf_hello(int argc,int *cmd_arg)
+{
+  printf("Hello\r\n");
+}
+
+void handle_arg(int argc, int *cmd_arg)
+{
+  int i=0;
+  for( i=0; i<argc; i++ )
+  {
+    printf("%d\r\n",cmd_arg[i]);
+  }
+}
+
+void toggle_led(int argc, int *cmd_arg)
+{
+  HAL_GPIO_TogglePin(TP6_GPIO_Port, TP6_Pin);
+}
+
+void read_reg_10983(int argc, int *cmd_arg)
+{
+  printf("Drv10983 Reg:\r\n");
+  int i;
+  int delay;
+  uint8_t i2cTempData[12];
+  uint8_t tempAddr = 0x00;
+  /* read regs of drv10983 addr 0x20 - 0x2B */
+		
+  tempAddr = 0x20;
+  for (i = 0; i < 12; i++)
+  {
+    HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &tempAddr, 1, 0xFFFF);
+    delay = 20;
+    while(delay--){};
+    HAL_I2C_Master_Receive(&hi2c1, devReadCmd, &i2cTempData[i], 1, 0xFFFF);
+    // HAL_UART_Transmit(&huart1, i2cTempData + i, 1, timeOut);
+    tempAddr += 0x01;
+      
+    simpleDelay(200);
+  }
+  for(i = 0; i < 12; i++)
+  {
+    printf("Reg 0x%02X:  0x%02X\r\n", i, i2cTempData[i]);
+  }
+}
 /* USER CODE END 4 */
 
 /**
