@@ -123,7 +123,10 @@ void toggle_led(int argc, int *cmd_arg);
 void read_reg_10983(int argc, int *cmd_arg);
 void set_speed(int argc, int *cmd_arg);
 void set_reg(int argc, int *cmd_arg);
+void start_motor(int argc, int *cmd_arg);
+
 void set_pwm(int pulseWidth);
+void Motor_SPEED_GPIO_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -141,7 +144,8 @@ const cmd_list_struct cmd_list[]={
 {"toggleled", 0, toggle_led, "no help" },
 {"readreg", 0, read_reg_10983, "Read Drv10983 Regs"},
 {"setspeed", 1, set_speed, "Set Motor speed"},
-{"setreg", 2, set_reg, "Set DRV10983 Register"}
+{"setreg", 2, set_reg, "Set DRV10983 Register"},
+{"startmotor", 0, start_motor, "wakeup speed pin"}
 };
 /* USER CODE END 0 */
 
@@ -261,7 +265,10 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 //  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+
+//  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  Motor_SPEED_GPIO_Init();
+
 //  HAL_SuspendTick();
   /* test pulse */
   GPIOB->BRR = TP6_Pin;
@@ -937,6 +944,32 @@ void set_reg(int argc, int *cmd_arg)
   addr_reg[1] = cmd_arg[1];
   HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, addr_reg, 2, 0xFFFF);
   printf("OK!\r\n");
+}
+
+void Motor_SPEED_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct;
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PA0 -> Motor Speed */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* Set PA0 to LOW */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+}
+
+void start_motor(int argc, int *cmd_arg)
+{
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
 }
 /* USER CODE END 4 */
 
