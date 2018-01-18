@@ -52,7 +52,7 @@
 #include <string.h>
 
 #define ARG_NUM 10
-#define CMD_FUNC_CNT 6
+#define CMD_FUNC_CNT 8
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -124,6 +124,7 @@ void read_reg_10983(int argc, int *cmd_arg);
 void set_speed(int argc, int *cmd_arg);
 void set_reg(int argc, int *cmd_arg);
 void start_motor(int argc, int *cmd_arg);
+void stop_motor(int argc, int *cmd_arg);
 
 void set_pwm(int pulseWidth);
 void Motor_SPEED_GPIO_Init(void);
@@ -145,7 +146,8 @@ const cmd_list_struct cmd_list[]={
 {"readreg", 0, read_reg_10983, "Read Drv10983 Regs"},
 {"setspeed", 1, set_speed, "Set Motor speed"},
 {"setreg", 2, set_reg, "Set DRV10983 Register"},
-{"startmotor", 0, start_motor, "wakeup speed pin"}
+{"startmotor", 0, start_motor, "wakeup speed pin"},
+{"stopmotor", 0, stop_motor, "sleep mode"}
 };
 /* USER CODE END 0 */
 
@@ -279,10 +281,10 @@ int main(void)
   //enable Sidata bit 10983
   HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, enSiData, 2, timeOut);
   
-	for (i = 0; i < 14; i++)
-	{
-	  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &regWDSet[2*i], 2, timeOut);
-	}
+//	for (i = 0; i < 14; i++)
+//	{
+//	  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, &regWDSet[2*i], 2, timeOut);
+//	}
 	
   
   
@@ -298,6 +300,7 @@ int main(void)
   
   HAL_UART_Receive_IT(&huart1, rxBuf, 1);
   printf("Start:\r\n");
+  printf("Commands count: %d\r\n", CMD_FUNC_CNT);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -970,6 +973,24 @@ void Motor_SPEED_GPIO_Init(void)
 void start_motor(int argc, int *cmd_arg)
 {
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+  uint8_t addr_reg[2];
+  addr_reg[0] = 0x00;
+  addr_reg[1] = 0xA0;
+  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, addr_reg, 2, 0xFFFF);
+  addr_reg[0] = 0x01;
+  addr_reg[1] = 0x80;
+  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, addr_reg, 2, 0xFFFF);
+  printf("Motor started\r\n");
+}
+
+void stop_motor(int argc, int *cmd_arg)
+{
+  uint8_t addr_reg[2];
+  addr_reg[0] = 0x00;
+  addr_reg[1] = 0x00;
+  HAL_I2C_Master_Transmit(&hi2c1, devWriteCmd, addr_reg, 2, 0xFFFF);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+  printf("Motor stoped\r\n");
 }
 /* USER CODE END 4 */
 
